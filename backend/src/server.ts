@@ -35,6 +35,6 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', supabase: !!supabase });
 });
 
-server.listen(PORT, () => {
+server.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`✅ Backend server running on port ${PORT}`);
 });
