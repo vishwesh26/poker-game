@@ -20,8 +20,10 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     // Detect local IP for mobile access or use environment variable
-    const SOCKET_SERVER = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://192.168.0.105:8080';
-    const socketInstance = io(SOCKET_SERVER);
+    const SOCKET_SERVER = process.env.NEXT_PUBLIC_SOCKET_URL || 'https://poker-game-production-7314.up.railway.app';
+    const socketInstance = io(SOCKET_SERVER, {
+      transports: ['websocket', 'polling'],
+    });
 
     socketInstance.on('connect', () => {
       setIsConnected(true);
