@@ -3,13 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSocket } from '@/context/SocketContext';
 import { PokerTable } from '@/components/PokerTable';
-import { OrientationGuard } from '@/components/OrientationGuard';
 
 export default function RoomPage({ params }: { params: { roomId: string } }) {
   const { roomId } = params;
   const searchParams = useSearchParams();
   const { socket, isConnected } = useSocket();
-  const [gameState, setGameState] = useState<any>(null);
+  const [gameState, setGameState] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -43,7 +42,7 @@ export default function RoomPage({ params }: { params: { roomId: string } }) {
       socket.off('game_state');
       socket.off('error');
     };
-  }, [socket, isConnected, roomId]);
+  }, [socket, isConnected, roomId, searchParams]);
 
   if (!gameState) {
     return <div className="flex h-screen items-center justify-center text-stone-400 font-bold animate-pulse text-xl">Connecting to Room {roomId}...</div>;

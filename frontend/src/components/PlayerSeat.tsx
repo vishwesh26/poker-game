@@ -1,10 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayingCard } from './PlayingCard';
 import { chipsToRupees } from '@/utils/currency';
 
 interface PlayerSeatProps {
-  player: any;
   isCurrentTurn: boolean;
   isDealer: boolean;
   isWinner: boolean;

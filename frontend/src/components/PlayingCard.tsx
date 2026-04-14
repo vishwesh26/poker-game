@@ -20,7 +20,7 @@ const SIZE_CLASSES = {
 };
 
 export const PlayingCard = ({
-  rank, suit, isHidden = false, revealAllCards = false, delay = 0, size = 'sm'
+  rank, suit, isHidden = false, delay = 0, size = 'sm'
 }: PlayingCardProps) => {
   const isRed = suit === 'hearts' || suit === 'diamonds';
   const symbol = SUIT_SYMBOLS[suit] || suit;

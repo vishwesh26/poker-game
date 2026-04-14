@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, TrendingDown, TrendingUp, History, ArrowRight, Users } from 'lucide-react';
-import { chipsToRupees } from '@/utils/currency';
 
 interface Settlement {
   playerId: string;
