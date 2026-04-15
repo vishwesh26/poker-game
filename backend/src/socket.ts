@@ -1,10 +1,12 @@
 import { Server, Socket } from 'socket.io';
-import { Game } from './game/Game';
+import { BaseGame } from './game/BaseGame';
+import { PokerGame } from './game/PokerGame';
 import { Player } from './game/Player';
+import { BotIntelligence } from './game/BotIntelligence';
 import { supabase } from './server';
 
-/** All active poker rooms — keyed by room code, stored in memory */
-const activeGames = new Map<string, Game>();
+/** All active rooms — keyed by room code, stored in memory */
+const activeGames = new Map<string, BaseGame>();
 
 /** Seconds a player has to act before being auto-folded */
 const TURN_SECONDS = 30;
@@ -13,9 +15,15 @@ export const initSockets = (io: Server) => {
 
   // ── Broadcast helpers ────────────────────────────────────────────────────
 
-  const broadcastGameState = (roomId: string, game: Game) => {
+  const broadcastGameState = (roomId: string, game: BaseGame) => {
+    // We can still use the loop to send customized (masked) states to specific real sockets
     const socketsInRoom = io.sockets.adapter.rooms.get(roomId);
-    if (!socketsInRoom) return;
+    if (!socketsInRoom || socketsInRoom.size === 0) {
+      // Fallback: if adapter is being weird, just emit to room generally
+      io.to(roomId).emit('game_state', game.getPublicState());
+      return;
+    }
+
     for (const socketId of socketsInRoom) {
       io.to(socketId).emit('game_state', game.getPublicState(socketId));
     }
@@ -27,7 +35,7 @@ export const initSockets = (io: Server) => {
    * Clears any existing turn timer for a game and starts a new one.
    * When it fires, the current player is auto-folded.
    */
-  const setTurnTimer = (roomId: string, game: Game) => {
+  const setTurnTimer = (roomId: string, game: BaseGame) => {
     // Cancel previous timer
     if (game.pendingTurnTimeout) {
       clearTimeout(game.pendingTurnTimeout);
@@ -42,12 +50,43 @@ export const initSockets = (io: Server) => {
 
     game.turnDeadline = Date.now() + TURN_SECONDS * 1000;
 
+    const currentPlayerOuter = game.players[game.currentTurnIndex];
+    if (!currentPlayerOuter) return;
+
     game.pendingTurnTimeout = setTimeout(() => {
       const g = activeGames.get(roomId);
       if (!g || g.state === 'waiting' || g.state === 'showdown') return;
 
       const currentPlayer = g.players[g.currentTurnIndex];
       if (!currentPlayer) return;
+
+      if (currentPlayer.isBot) {
+        // AI makes a decision
+        const decision = BotIntelligence.determineAction(g, currentPlayer);
+        
+        console.log(`[Bot] ${currentPlayer.username} executes ${decision.action} in room ${roomId}`);
+        const valid = g.handleAction(currentPlayer.id, decision.action, decision.amount);
+
+        // If the bot chose 'see', it didn't end its turn. We must recurse manually to let them choose chaal/fold.
+        if (valid) {
+          broadcastGameState(roomId, g);
+
+          if (decision.action === 'see') {
+             // Let the bot "think" again before making its subsequent bet or fold
+             setTurnTimer(roomId, g);
+          } else {
+             const stateAfter = g.state as string;
+             if (stateAfter === 'showdown') {
+               g.turnDeadline = 0;
+               persistSettlements(roomId, g);
+               scheduleReset(roomId, g);
+             } else {
+               setTurnTimer(roomId, g);
+             }
+          }
+        }
+        return;
+      }
 
       console.log(`[Timer] Auto-folding ${currentPlayer.username} in room ${roomId}`);
       const valid = g.handleAction(currentPlayer.id, 'fold');
@@ -65,16 +104,15 @@ export const initSockets = (io: Server) => {
           setTurnTimer(roomId, g);
         }
       }
-    }, TURN_SECONDS * 1000);
+    }, currentPlayerOuter.isBot ? (Math.random() * 2000 + 1500) : (TURN_SECONDS * 1000));
   };
 
   /** 6-second delay before resetting from showdown to waiting */
-  const scheduleReset = (roomId: string, game: Game) => {
+  const scheduleReset = (roomId: string, game: BaseGame) => {
     setTimeout(() => {
       game.state = 'waiting';
       game.cleanUpPlayers();
-      game.players.forEach(p => { p.hand = []; });
-      game.communityCards = [];
+      game.resetPotsAndCards();
       broadcastGameState(roomId, game);
     }, 6000);
   };
@@ -82,13 +120,14 @@ export const initSockets = (io: Server) => {
   // ── Supabase persistence ─────────────────────────────────────────────────
 
   /** Upsert room metadata when a room is first created */
-  const upsertRoom = async (game: Game, roomCode: string) => {
+  const upsertRoom = async (game: BaseGame, roomCode: string) => {
     if (!supabase) return;
     try {
       await supabase.from('rooms').upsert(
         {
           code: roomCode,
           game_type: game.gameType,
+          game_name: game.gameName,
           entry_amount: game.entryAmount,
           small_blind: game.smallBlindAmt,
           big_blind: game.bigBlindAmt,
@@ -104,7 +143,7 @@ export const initSockets = (io: Server) => {
   };
 
   /** Persist settlement records to Supabase — called whenever a player exits */
-  const persistSettlements = async (roomCode: string, game: Game) => {
+  const persistSettlements = async (roomCode: string, game: BaseGame) => {
     if (!supabase || !game.settlements.length) return;
     try {
       await supabase
@@ -141,16 +180,17 @@ export const initSockets = (io: Server) => {
       username: string;
       avatarUrl: string;
       gameType?: 'FAKE' | 'REAL';
+      gameName?: 'POKER' | 'TEEN_PATTI';
       entryAmount?: number;
     }) => {
       let game = activeGames.get(data.roomId);
 
       if (!game) {
-        game = new Game(
-          data.roomId, 6, 10, 20,
-          data.gameType || 'FAKE',
-          data.entryAmount || 0
-        );
+        const gameType = data.gameType || 'FAKE';
+        const entryAmount = data.entryAmount || 0;
+
+        game = new PokerGame(data.roomId, 6, 10, 20, gameType, entryAmount);
+
         activeGames.set(data.roomId, game);
         upsertRoom(game, data.roomId); // fire-and-forget
       }
@@ -179,6 +219,35 @@ export const initSockets = (io: Server) => {
       }
     });
 
+    // ── add_bot ────────────────────────────────────────────────────────────
+    socket.on('add_bot', (data: { roomId: string }) => {
+      const rid = (data.roomId || '').trim();
+      const game = activeGames.get(rid);
+      if (!game) {
+        socket.emit('error', { message: `Room ${rid} not found on server` });
+        return;
+      }
+
+      if (game.state !== 'waiting') {
+        socket.emit('error', { message: 'Cannot add bots after game has started' });
+        return;
+      }
+
+      const botId = 'bot-' + Math.random().toString(36).substring(2, 9);
+      const botNames = ['Vihaan', 'Aarav', 'Diya', 'Advik', 'Kabir', 'Riya', 'Rohan', 'Zara'];
+      const randomName = botNames[Math.floor(Math.random() * botNames.length)] + ' (Bot)';
+      
+      const player = new Player(botId, `bot_socket_${botId}`, randomName, `https://api.dicebear.com/7.x/avataaars/svg?seed=${botId}`);
+      player.isBot = true; 
+      
+      const added = game.addPlayer(player);
+      if (added) {
+        broadcastGameState(rid, game);
+      } else {
+        socket.emit('error', { message: 'Room is full or bot already added' });
+      }
+    });
+
     // ── start_game ─────────────────────────────────────────────────────────
     socket.on('start_game', (data: { roomId: string }) => {
       const game = activeGames.get(data.roomId);
@@ -194,7 +263,7 @@ export const initSockets = (io: Server) => {
     // ── action ─────────────────────────────────────────────────────────────
     socket.on('action', (data: {
       roomId: string;
-      action: 'fold' | 'check' | 'call' | 'raise';
+      action: string;
       amount?: number;
     }) => {
       const game = activeGames.get(data.roomId);

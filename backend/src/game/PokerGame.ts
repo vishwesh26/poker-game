@@ -3,6 +3,7 @@ import { Deck } from './Deck';
 import { Player } from './Player';
 import { HandEvaluator } from './HandEvaluator';
 import { calculateTransactions } from '../utils/settlement';
+import { BaseGame } from './BaseGame';
 
 export type GameState = 'waiting' | 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
 
@@ -12,35 +13,15 @@ interface SidePot {
   eligibleIds: string[]; // player IDs who can contest this pot
 }
 
-export class Game {
-  public id: string;
-  public players: Player[] = [];
-  public maxPlayers: number;
-  public state: GameState = 'waiting';
-  public gameType: 'FAKE' | 'REAL' = 'FAKE';
-  public entryAmount: number = 0;
-  public settlements: any[] = [];
-
-  // Win state — declared at top to avoid ordering issues in cleanUpPlayers
-  public winMessage: string = '';
-  public winnerIds: string[] = [];
+export class PokerGame extends BaseGame {
   public lastHandPots: SidePot[] = []; // populated at showdown for UI display
-
-  public smallBlindAmt: number;
-  public bigBlindAmt: number;
 
   public deck: Deck;
   public communityCards: Card[] = [];
   public pot: number = 0; // running chip total (for live display)
 
-  public dealerIndex: number = 0;
-  public currentTurnIndex: number = -1;
   public currentHighestBet: number = 0;
   public lastRaiseAmount: number = 0;
-
-  // Turn timer state — deadline timestamp (ms); managed by socket.ts
-  public turnDeadline: number = 0;
-  public pendingTurnTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     id: string,
@@ -50,77 +31,16 @@ export class Game {
     gameType: 'FAKE' | 'REAL' = 'FAKE',
     entryAmount: number = 0
   ) {
-    this.id = id;
-    this.maxPlayers = maxPlayers;
-    this.smallBlindAmt = smallBlind;
-    this.bigBlindAmt = bigBlind;
-    this.gameType = gameType;
-    this.entryAmount = entryAmount;
+    super(id, maxPlayers, smallBlind, bigBlind, gameType, 'POKER', entryAmount);
     this.deck = new Deck();
   }
 
-  // ── Player Management ──────────────────────────────────────────────────
-
-  public addPlayer(player: Player): boolean {
-    if (this.players.length >= this.maxPlayers) return false;
-    if (this.players.find(p => p.id === player.id)) return false;
-    this.players.push(player);
-    return true;
+  public resetPotsAndCards() {
+    this.players.forEach(p => { p.hand = []; });
+    this.communityCards = [];
   }
 
-  public removePlayer(playerId: string) {
-    const index = this.players.findIndex(p => p.id === playerId);
-    if (index === -1) return;
-
-    const player = this.players[index];
-
-    // Calculate settlement before removing
-    const chipsAtExit = player.chips + player.currentBet;
-    const entryChips = 10000;
-    const valueInRupees = (chipsAtExit / entryChips) * this.entryAmount;
-    const netAmount = valueInRupees - this.entryAmount;
-
-    this.settlements.push({
-      playerId: player.id,
-      username: player.username,
-      chipsAtExit,
-      valueInRupees: parseFloat(valueInRupees.toFixed(2)),
-      netAmount: parseFloat(netAmount.toFixed(2)),
-      status: netAmount >= 0 ? 'WIN' : 'LOSS',
-      time: new Date().toISOString()
-    });
-
-    // If mid-game and it's their turn, fold them first to advance game gracefully
-    if (
-      this.state !== 'waiting' &&
-      this.state !== 'showdown' &&
-      this.currentTurnIndex === index
-    ) {
-      this.handleAction(playerId, 'fold');
-    }
-
-    this.players.splice(index, 1);
-
-    // Adjust indices after splice
-    if (index < this.dealerIndex) this.dealerIndex--;
-    if (index < this.currentTurnIndex) this.currentTurnIndex--;
-
-    if (this.dealerIndex >= this.players.length) this.dealerIndex = 0;
-    if (this.currentTurnIndex >= this.players.length) this.currentTurnIndex = 0;
-  }
-
-  public cleanUpPlayers() {
-    this.players = this.players.filter(p => p.chips > 0);
-    this.players.forEach(p => {
-      p.lastAction = '';
-      p.hasActed = false;
-    });
-    this.winMessage = '';
-    this.winnerIds = [];
-    this.lastHandPots = [];
-    this.turnDeadline = 0;
-    if (this.players.length < 2) this.state = 'waiting';
-  }
+  // ── Player Management (inherited) ──────────────────────────────────────
 
   // ── Game Loop ──────────────────────────────────────────────────────────
 
@@ -440,26 +360,7 @@ export class Game {
     this.pot = 0;
   }
 
-  // ── Settlement Calculation ─────────────────────────────────────────────
-
-  private calculateCurrentInstructions() {
-    if (this.gameType !== 'REAL') return [];
-
-    const participants: { name: string; net: number }[] = [];
-
-    this.settlements.forEach(s => {
-      participants.push({ name: s.username, net: s.netAmount });
-    });
-
-    this.players.forEach(p => {
-      const chipsAtNow = p.chips + p.currentBet;
-      const valueInRupees = (chipsAtNow / 10000) * this.entryAmount;
-      const netAmount = parseFloat((valueInRupees - this.entryAmount).toFixed(2));
-      participants.push({ name: p.username, net: netAmount });
-    });
-
-    return calculateTransactions(participants);
-  }
+  // ── Settlement Calculation (inherited) ──────────────────────────────
 
   // ── Public State ────────────────────────────────────────────────────────
 
@@ -473,6 +374,7 @@ export class Game {
       dealerIndex: this.dealerIndex,
       currentHighestBet: this.currentHighestBet,
       lastRaiseAmount: this.lastRaiseAmount,
+      gameName: this.gameName,
       gameType: this.gameType,
       entryAmount: this.entryAmount,
       settlements: this.settlements,

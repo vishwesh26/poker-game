@@ -84,6 +84,16 @@ export const PokerTable = ({ gameState, roomId }: { gameState: any; roomId: stri
     else document.exitFullscreen?.();
   };
 
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('error', (err: any) => {
+      console.error('[Socket Error]', err);
+    });
+    return () => {
+      socket.off('error');
+    };
+  }, [socket]);
+
   // Rotate so Hero is always index 0
   const heroIdx = gameState.players.findIndex((p: any) => p.id === userId);
   const seatedPlayers: (any | null)[] = Array(6).fill(null);
@@ -217,18 +227,28 @@ export const PokerTable = ({ gameState, roomId }: { gameState: any; roomId: stri
               <p className={`font-bold text-white tracking-widest ${isMobile ? 'text-[10px]' : 'text-sm'}`}>
                 {gameState.players.length} / {gameState.maxPlayers || 6} Players
               </p>
-              {gameState.players.length >= 2 ? (
-                <button onClick={() => socket?.emit('start_game', { roomId })}
-                  className={`bg-emerald-500 hover:bg-emerald-400 text-white rounded-full font-black flex items-center gap-1 transition
-                    ${isMobile ? 'px-3 py-1 text-[10px]' : 'px-6 py-2 text-sm'}`}>
-                  <Play size={isMobile ? 10 : 14} fill="currentColor" /> START
-                </button>
-              ) : (
-                <span className={`text-stone-400 font-bold bg-stone-900/80 border border-stone-700 rounded-full flex items-center gap-1
-                  ${isMobile ? 'px-2.5 py-1 text-[9px]' : 'px-5 py-2 text-xs'}`}>
-                  <Users size={isMobile ? 9 : 12} /> Waiting…
-                </span>
-              )}
+              <div className="flex gap-2 items-center justify-center">
+                {gameState.players.length >= 2 ? (
+                  <button onClick={() => socket?.emit('start_game', { roomId })}
+                    className={`bg-emerald-500 hover:bg-emerald-400 text-white rounded-full font-black flex items-center gap-1 transition
+                      ${isMobile ? 'px-3 py-1 text-[10px]' : 'px-6 py-2 text-sm'}`}>
+                    <Play size={isMobile ? 10 : 14} fill="currentColor" /> START
+                  </button>
+                ) : (
+                  <span className={`text-stone-400 font-bold bg-stone-900/80 border border-stone-700 rounded-full flex items-center gap-1
+                    ${isMobile ? 'px-2.5 py-1 text-[9px]' : 'px-5 py-2 text-xs'}`}>
+                    <Users size={isMobile ? 9 : 12} /> Waiting…
+                  </span>
+                )}
+                
+                {gameState.players.length < (gameState.maxPlayers || 6) && (
+                  <button onClick={() => socket?.emit('add_bot', { roomId })}
+                    className={`bg-blue-600 hover:bg-blue-500 text-white rounded-full font-black transition whitespace-nowrap
+                      ${isMobile ? 'px-3 py-1 text-[10px]' : 'px-6 py-2 text-sm'}`}>
+                    + Bot 🤖
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

@@ -16,6 +16,7 @@ export class Player {
   public isAllIn: boolean = false;
   public lastAction: string = '';
   public lastActionTime: number = 0;
+  public isBot: boolean = false;
 
   constructor(id: string, socketId: string, username: string, avatarUrl: string, initialChips: number = 10000) {
     this.id = id;
@@ -48,6 +49,7 @@ export class Player {
       isAllIn: this.isAllIn,
       hasActed: this.hasActed,
       lastAction: this.lastAction,
+      isBot: this.isBot,
       hand: showCards
         ? this.hand
         : (this.hand.length > 0 ? [{ rank: '?', suit: '?' }, { rank: '?', suit: '?' }] : [])

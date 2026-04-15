@@ -10,6 +10,9 @@ export default function Home() {
   const [roomCode, setRoomCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   
+  // Game selection state
+  const [selectedGame, setSelectedGame] = useState<'POKER' | 'TEEN_PATTI' | null>(null);
+
   // Real Money Mode states
   const [gameMode, setGameMode] = useState<'FAKE' | 'REAL'>('FAKE');
   const [entryAmount, setEntryAmount] = useState('10');
@@ -21,10 +24,10 @@ export default function Home() {
     if (type === 'create') {
       const code = Math.random().toString(36).substring(2, 7).toUpperCase();
       // We pass settings in query params for the first joiner (host) to initialize the room
-      router.push(`/room/${code}?mode=${gameMode}&entry=${entryAmount}`);
+      router.push(`/room/${code}?mode=${gameMode}&entry=${entryAmount}&game=${selectedGame}`);
     } else {
       if (!roomCode) return alert('Enter a room code');
-      router.push(`/room/${roomCode}`);
+      router.push(`/room/${roomCode}?game=${selectedGame}`);
     }
   };
 

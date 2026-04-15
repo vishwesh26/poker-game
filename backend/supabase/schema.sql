@@ -32,6 +32,7 @@ create table public.rooms (
   code text unique not null,
   is_private boolean default false,
   game_type text default 'FAKE', -- FAKE or REAL
+  game_name text default 'POKER', -- POKER or TEEN_PATTI
   entry_amount integer default 0, -- INR value of the 10k chips
   max_players integer default 6,
   small_blind integer default 10,
