@@ -64,13 +64,13 @@ export const PlayerSeat = ({
 
   const hasFolded = player.hasFolded && !revealAllCards;
 
-  // Sizes
-  const circleSize  = isMobile ? 'w-11 h-11' : 'w-[60px] h-[60px]';
-  const imgSize     = isMobile ? 'w-9 h-9'   : 'w-[52px] h-[52px]';
-  const nameSize    = isMobile ? 'text-[8px] max-w-[44px]' : 'text-[10px] max-w-[64px]';
-  const chipsSize   = isMobile ? 'text-[8px]' : 'text-[10px] md:text-xs';
-  const cardGap     = isMobile ? 'gap-0.5'    : 'gap-1';
-  const cardOffset  = isMobile ? 'mb-[-6px]'  : 'mb-[-8px]';
+  // Sizes — xs cards on mobile prevent horizontal collision
+  const circleSize  = isMobile ? 'w-9 h-9'   : 'w-[60px] h-[60px]';
+  const imgSize     = isMobile ? 'w-7 h-7'   : 'w-[52px] h-[52px]';
+  const nameSize    = isMobile ? 'text-[7px] max-w-[40px]' : 'text-[10px] max-w-[64px]';
+  const chipsSize   = isMobile ? 'text-[7px]' : 'text-[10px] md:text-xs';
+  const cardGap     = isMobile ? 'gap-[2px]'  : 'gap-1';
+  const cardOffset  = isMobile ? 'mb-[-4px]'  : 'mb-[-8px]';
 
   // Glow colour based on state
   const ringColour =
@@ -99,7 +99,7 @@ export const PlayerSeat = ({
                 isHidden={card.rank === '?'}
                 revealAllCards={revealAllCards}
                 delay={0}
-                size={isMobile ? 'sm' : 'md'}
+                size={isMobile ? 'xs' : 'md'}
               />
             </motion.div>
           ))}

@@ -88,14 +88,14 @@ export const ActionPanel = ({
   // ── Waiting state ──────────────────────────────────────────────────────────
   if (!canAct) {
     return (
-      <div className={`w-full flex items-center justify-center gap-3 bg-stone-950/90 border-t border-stone-800 ${isMobile ? 'py-2' : 'py-3'}`}>
-        <span className="text-stone-600 font-bold uppercase tracking-widest text-[10px] md:text-xs">
-          Waiting for turn…
-        </span>
-        {/* Show observer countdown when someone else is on the clock */}
-        {showTimer && (
-          <TurnTimer deadline={turnDeadline} urgent={false} />
-        )}
+      <div className={`w-full flex flex-col items-center justify-center gap-3 bg-stone-950/90 border-t border-stone-800 
+        ${isMobile ? 'h-[94px]' : 'py-3'}`}>
+        <div className="flex items-center gap-3">
+          <span className="text-stone-600 font-bold uppercase tracking-widest text-[10px] md:text-xs">
+            Waiting for turn…
+          </span>
+          {showTimer && <TurnTimer deadline={turnDeadline} urgent={false} />}
+        </div>
       </div>
     );
   }
@@ -103,7 +103,7 @@ export const ActionPanel = ({
   // ── Mobile Layout ──────────────────────────────────────────────────────────
   if (isMobile) {
     return (
-      <div className="w-full bg-stone-950/95 border-t border-stone-800/80 px-2 pt-1.5 pb-2 space-y-1.5 safe-area-bottom">
+      <div className="w-full h-[94px] bg-stone-950/95 border-t border-stone-800/80 px-2 pt-2 flex flex-col justify-between pb-2 safe-area-bottom">
         {/* Timer + Slider row */}
         <div className="flex items-center gap-2 px-1">
           {showTimer && <TurnTimer deadline={turnDeadline} urgent />}

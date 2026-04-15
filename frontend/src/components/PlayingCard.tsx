@@ -6,7 +6,7 @@ interface PlayingCardProps {
   isHidden?: boolean;
   revealAllCards?: boolean;
   delay?: number;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 const SUIT_SYMBOLS: Record<string, string> = {
@@ -14,9 +14,10 @@ const SUIT_SYMBOLS: Record<string, string> = {
 };
 
 const SIZE_CLASSES = {
-  sm:  'w-7 h-[42px]   rounded-md   text-[9px]  md:text-[10px]',
-  md:  'w-10 h-14      rounded-lg   text-[11px] md:text-xs',
-  lg:  'w-14 h-20      rounded-xl   text-sm     md:text-base',
+  xs:  'w-5 h-[32px]   rounded     text-[7px]',
+  sm:  'w-7 h-[42px]   rounded-md  text-[9px]  md:text-[10px]',
+  md:  'w-10 h-14      rounded-lg  text-[11px] md:text-xs',
+  lg:  'w-14 h-20      rounded-xl  text-sm     md:text-base',
 };
 
 export const PlayingCard = ({

@@ -5,9 +5,10 @@ import { PlayerSeat } from './PlayerSeat';
 import { PlayingCard } from './PlayingCard';
 import { ActionPanel } from './ActionPanel';
 import { useSocket } from '@/context/SocketContext';
-import { LogOut, History, Maximize2, Users, Play } from 'lucide-react';
+import { LogOut, History, Maximize2, Users, Play, BookOpen } from 'lucide-react';
 import { chipsToRupees } from '@/utils/currency';
 import { SettlementModal } from './SettlementModal';
+import { HandRankingsPanel } from './HandRankingsPanel';
 import { useRouter } from 'next/navigation';
 
 /*
@@ -62,6 +63,7 @@ export const PokerTable = ({ gameState, roomId }: { gameState: any; roomId: stri
   const router = useRouter();
   const userId = typeof window !== 'undefined' ? localStorage.getItem('poker_userid') : null;
   const [isSettlementOpen, setIsSettlementOpen] = useState(false);
+  const [isRankingsOpen, setIsRankingsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -124,7 +126,8 @@ export const PokerTable = ({ gameState, roomId }: { gameState: any; roomId: stri
 
         <div className={`flex items-center ${isMobile ? 'gap-1' : 'gap-2'}`}>
           {[
-            { icon: <Maximize2 size={isMobile ? 12 : 14} />, onClick: toggleFullscreen, label: null, style: 'text-stone-500 hover:text-sky-400' },
+          { icon: <Maximize2 size={isMobile ? 12 : 14} />, onClick: toggleFullscreen, label: null, style: 'text-stone-500 hover:text-sky-400' },
+            { icon: <BookOpen size={isMobile ? 12 : 14} />, onClick: () => setIsRankingsOpen(true), label: 'Guide', style: 'text-stone-500 hover:text-emerald-400' },
             { icon: <History size={isMobile ? 12 : 14} />, onClick: () => setIsSettlementOpen(true), label: 'History', style: 'text-stone-500 hover:text-emerald-400' },
             { icon: <LogOut size={isMobile ? 12 : 14} />, onClick: handleLeave, label: 'Leave', style: 'text-rose-600/80 hover:text-white hover:bg-rose-600' },
           ].map((btn, i) => (
@@ -145,6 +148,11 @@ export const PokerTable = ({ gameState, roomId }: { gameState: any; roomId: stri
         instructions={gameState.instructions || []}
         entryAmount={gameState.entryAmount}
         gameType={gameState.gameType}
+      />
+
+      <HandRankingsPanel
+        isOpen={isRankingsOpen}
+        onClose={() => setIsRankingsOpen(false)}
       />
 
       {/* ═══ ARENA ══════════════════════════════════════ */}

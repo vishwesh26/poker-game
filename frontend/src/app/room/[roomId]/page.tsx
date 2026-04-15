@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSocket } from '@/context/SocketContext';
 import { PokerTable } from '@/components/PokerTable';
-import { OrientationGuard } from '@/components/OrientationGuard';
 
 export default function RoomPage({ params }: { params: { roomId: string } }) {
   const { roomId } = params;
@@ -50,15 +49,13 @@ export default function RoomPage({ params }: { params: { roomId: string } }) {
   }
 
   return (
-    <OrientationGuard>
-      <div className="h-[100dvh] w-screen bg-stone-950 flex flex-col overflow-hidden relative">
-        {error && (
-          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-[60] bg-red-600/90 text-white px-5 py-2 rounded-full font-bold shadow-2xl border border-red-500 animate-bounce text-sm whitespace-nowrap">
-            {error}
-          </div>
-        )}
-        <PokerTable gameState={gameState} roomId={roomId} />
-      </div>
-    </OrientationGuard>
+    <div className="h-[100dvh] w-screen bg-stone-950 flex flex-col overflow-hidden relative">
+      {error && (
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-[60] bg-red-600/90 text-white px-5 py-2 rounded-full font-bold shadow-2xl border border-red-500 animate-bounce text-sm whitespace-nowrap">
+          {error}
+        </div>
+      )}
+      <PokerTable gameState={gameState} roomId={roomId} />
+    </div>
   );
 }
