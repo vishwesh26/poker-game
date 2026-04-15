@@ -139,8 +139,8 @@ export default function Home() {
       </motion.div>
       
       <p className="mt-12 text-stone-600 text-sm z-10 flex items-center justify-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> 
-        1,304 Players Online
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        No sign-up required · Up to 6 players per room
       </p>
     </main>
   );

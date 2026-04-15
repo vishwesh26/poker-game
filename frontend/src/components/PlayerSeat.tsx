@@ -5,6 +5,8 @@ import { PlayingCard } from './PlayingCard';
 import { chipsToRupees } from '@/utils/currency';
 
 interface PlayerSeatProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  player: any | null;
   isCurrentTurn: boolean;
   isDealer: boolean;
   isWinner: boolean;

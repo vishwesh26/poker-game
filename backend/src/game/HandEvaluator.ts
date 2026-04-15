@@ -159,8 +159,8 @@ export class HandEvaluator {
     const sortedKeys = Array.from(rankCounts.keys()).sort((a, b) => b - a);
     for (const key of sortedKeys) {
       const grp = rankCounts.get(key)!;
-      if (grp.length >= 2 && grp.length < 4) { // Don't pick quads as paired
-         pairs.push(grp.slice(0, 2));
+      if (grp.length === 2) { // strictly genuine pairs — trips/quads are handled separately
+        pairs.push(grp.slice(0, 2));
       }
     }
     return pairs;

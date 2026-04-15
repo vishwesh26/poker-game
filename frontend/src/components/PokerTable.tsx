@@ -167,7 +167,7 @@ export const PokerTable = ({ gameState, roomId }: { gameState: any; roomId: stri
           <div className="absolute rounded-2xl border border-emerald-700/20 pointer-events-none"
             style={{ inset: isMobile ? 4 : 8 }} />
 
-          {/* Pot */}
+          {/* Pot — main pot or multiple side pots */}
           {gameState.pot > 0 && (
             <div className={`flex items-center gap-1.5 bg-black/50 border border-stone-600/50 rounded-full backdrop-blur-sm
               ${isMobile ? 'px-2 py-0.5 mb-1' : 'px-4 py-1.5 mb-3'}`}>
@@ -180,6 +180,17 @@ export const PokerTable = ({ gameState, roomId }: { gameState: any; roomId: stri
                   ({chipsToRupees(gameState.pot, gameState.entryAmount)})
                 </span>
               )}
+            </div>
+          )}
+
+          {/* Side pot breakdown (shown when there are multiple pots) */}
+          {!isMobile && gameState.sidePots && gameState.sidePots.length > 1 && (
+            <div className="flex gap-1 mb-1">
+              {gameState.sidePots.map((sp: any, i: number) => (
+                <span key={i} className="text-[8px] text-stone-400 font-mono bg-black/40 px-1.5 py-0.5 rounded-full border border-stone-700/40">
+                  {i === 0 ? 'main' : 'side'} ${sp.amount}
+                </span>
+              ))}
             </div>
           )}
 
@@ -257,6 +268,7 @@ export const PokerTable = ({ gameState, roomId }: { gameState: any; roomId: stri
             gameType={gameState.gameType}
             entryAmount={gameState.entryAmount}
             isMobile={isMobile}
+            turnDeadline={gameState.turnDeadline || 0}
           />
         </div>
       )}

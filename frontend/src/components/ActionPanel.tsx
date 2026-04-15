@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useSocket } from '@/context/SocketContext';
 import { chipsToRupees } from '@/utils/currency';
 
@@ -12,46 +12,101 @@ interface ActionPanelProps {
   gameType?: 'FAKE' | 'REAL';
   entryAmount?: number;
   isMobile?: boolean;
+  turnDeadline?: number; // epoch ms when the current turn expires
 }
+
+// ── Turn Countdown Ring ───────────────────────────────────────────────────────
+const TurnTimer = ({ deadline, urgent }: { deadline: number; urgent: boolean }) => {
+  const [secondsLeft, setSecondsLeft] = useState(() =>
+    Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+  );
+
+  useEffect(() => {
+    if (!deadline) return;
+    const id = setInterval(() => {
+      setSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+    }, 250);
+    return () => clearInterval(id);
+  }, [deadline]);
+
+  const TOTAL = 30;
+  const r = 14;
+  const circumference = 2 * Math.PI * r;
+  const fraction = Math.min(1, secondsLeft / TOTAL);
+  const dashOffset = circumference * (1 - fraction);
+  const isUrgent = secondsLeft <= 10;
+  const color = isUrgent ? '#ef4444' : '#10b981';
+
+  return (
+    <div className="flex items-center gap-1 flex-none">
+      <svg width="36" height="36" viewBox="0 0 36 36" className="-rotate-90 flex-none">
+        <circle cx="18" cy="18" r={r} fill="none" stroke="#292524" strokeWidth="3" />
+        <circle
+          cx="18" cy="18" r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="3"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          strokeLinecap="round"
+          style={{ transition: 'stroke-dashoffset 0.25s linear, stroke 0.5s' }}
+        />
+      </svg>
+      <span
+        className={`text-xs font-mono font-black tabular-nums min-w-[22px] ${
+          isUrgent ? 'text-red-400 animate-pulse' : 'text-stone-400'
+        }`}
+      >
+        {secondsLeft}s
+      </span>
+    </div>
+  );
+};
 
 export const ActionPanel = ({
   roomId, canAct, currentHighestBet, lastRaiseAmount,
-  playerBet, playerChips, gameType, entryAmount, isMobile = false
+  playerBet, playerChips, gameType, entryAmount, isMobile = false,
+  turnDeadline = 0
 }: ActionPanelProps) => {
   const { socket } = useSocket();
   const callAmount = Math.min(currentHighestBet - playerBet, playerChips);
   const minRaise = currentHighestBet + (lastRaiseAmount || 20);
   const [raiseVal, setRaiseVal] = useState(Math.min(minRaise, playerChips + playerBet));
 
-  React.useEffect(() => {
+  useEffect(() => {
     const nextMin = currentHighestBet + (lastRaiseAmount || 20);
     setRaiseVal(Math.min(nextMin, playerChips + playerBet));
-  }, [currentHighestBet, lastRaiseAmount, playerChips]);
+  }, [currentHighestBet, lastRaiseAmount, playerChips, playerBet]);
 
   const emit = useCallback((action: string, amount?: number) => {
     socket?.emit('action', { roomId, action, amount });
   }, [socket, roomId]);
 
   const isAllIn = raiseVal >= playerChips + playerBet;
+  const showTimer = turnDeadline > 0;
 
-  // ── Waiting ──────────────────────────────────────────────────────────
+  // ── Waiting state ──────────────────────────────────────────────────────────
   if (!canAct) {
     return (
-      <div className={`w-full flex items-center justify-center bg-stone-950/90 border-t border-stone-800
-        ${isMobile ? 'py-2' : 'py-3'}`}>
+      <div className={`w-full flex items-center justify-center gap-3 bg-stone-950/90 border-t border-stone-800 ${isMobile ? 'py-2' : 'py-3'}`}>
         <span className="text-stone-600 font-bold uppercase tracking-widest text-[10px] md:text-xs">
           Waiting for turn…
         </span>
+        {/* Show observer countdown when someone else is on the clock */}
+        {showTimer && (
+          <TurnTimer deadline={turnDeadline} urgent={false} />
+        )}
       </div>
     );
   }
 
-  // ── Mobile Layout ─────────────────────────────────────────────────────
+  // ── Mobile Layout ──────────────────────────────────────────────────────────
   if (isMobile) {
     return (
       <div className="w-full bg-stone-950/95 border-t border-stone-800/80 px-2 pt-1.5 pb-2 space-y-1.5 safe-area-bottom">
-        {/* Slider row */}
+        {/* Timer + Slider row */}
         <div className="flex items-center gap-2 px-1">
+          {showTimer && <TurnTimer deadline={turnDeadline} urgent />}
           <span className="text-stone-500 text-[9px] font-bold uppercase tracking-wider flex-none">Raise</span>
           <input
             type="range"
@@ -68,7 +123,7 @@ export const ActionPanel = ({
           </span>
         </div>
 
-        {/* Buttons row */}
+        {/* Action buttons */}
         <div className="grid grid-cols-3 gap-1.5">
           {/* FOLD */}
           <button
@@ -113,13 +168,15 @@ export const ActionPanel = ({
     );
   }
 
-  // ── Desktop Layout ─────────────────────────────────────────────────────
+  // ── Desktop Layout ─────────────────────────────────────────────────────────
   return (
     <div className="w-full bg-stone-950/95 border-t border-stone-800/80 px-6 py-4">
       <div className="max-w-2xl mx-auto flex flex-col gap-3">
-        {/* Raise slider */}
+        {/* Raise slider + timer */}
         <div className="flex items-center gap-4 bg-stone-900/60 rounded-2xl px-4 py-2 border border-stone-800/60">
-          <span className="text-stone-500 text-xs font-bold uppercase tracking-widest flex-none">Raise amount</span>
+          <span className="text-stone-500 text-xs font-bold uppercase tracking-widest flex-none">
+            Raise amount
+          </span>
           <input
             type="range"
             min={Math.min(minRaise, playerChips + playerBet)}
@@ -130,14 +187,20 @@ export const ActionPanel = ({
             className="flex-1 accent-emerald-500"
           />
           <div className="flex-none text-right">
-            <span className="text-emerald-400 font-mono font-bold text-sm">${raiseVal.toLocaleString()}</span>
+            <span className="text-emerald-400 font-mono font-bold text-sm">
+              ${raiseVal.toLocaleString()}
+            </span>
             {gameType === 'REAL' && (
-              <p className="text-emerald-400/50 text-[10px] font-medium">{chipsToRupees(raiseVal, entryAmount || 0)}</p>
+              <p className="text-emerald-400/50 text-[10px] font-medium">
+                {chipsToRupees(raiseVal, entryAmount || 0)}
+              </p>
             )}
           </div>
+          {/* Turn countdown ring — visible to the active player */}
+          {showTimer && <TurnTimer deadline={turnDeadline} urgent />}
         </div>
 
-        {/* Buttons */}
+        {/* Action buttons */}
         <div className="grid grid-cols-3 gap-3">
           <button
             onClick={() => emit('fold')}
@@ -160,7 +223,9 @@ export const ActionPanel = ({
             >
               <span>Call ${callAmount}</span>
               {gameType === 'REAL' && (
-                <span className="text-[10px] font-medium opacity-70 normal-case">{chipsToRupees(callAmount, entryAmount || 0)}</span>
+                <span className="text-[10px] font-medium opacity-70 normal-case">
+                  {chipsToRupees(callAmount, entryAmount || 0)}
+                </span>
               )}
             </button>
           )}
@@ -175,7 +240,9 @@ export const ActionPanel = ({
           >
             <span>{isAllIn ? '⚡ All-In' : `Raise $${raiseVal.toLocaleString()}`}</span>
             {gameType === 'REAL' && !isAllIn && (
-              <span className="text-[10px] font-medium opacity-70 normal-case">{chipsToRupees(raiseVal, entryAmount || 0)}</span>
+              <span className="text-[10px] font-medium opacity-70 normal-case">
+                {chipsToRupees(raiseVal, entryAmount || 0)}
+              </span>
             )}
           </button>
         </div>
